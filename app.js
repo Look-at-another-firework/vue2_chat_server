@@ -74,13 +74,10 @@ server.listen(3030, () => {
 
 // io的书写
 const user = []
-// var userIsConnected = true // 是否登录
-// var currentUIDS = []
 io.on('connect', (socket) => {
-  var currentUID = null
-
   console.log('socket connected')
   socket.on('login', function (data) {
+    console.log('登录人的信息如下所示')
     console.log(data)
     let index = user.findIndex((i) => i.name === data.name)
     if (index == 0) {
@@ -109,15 +106,26 @@ io.on('connect', (socket) => {
     io.emit('allBodyReturn', user)
   })
 
-  // 登录状态
-  // socket.on('userLogin', function (data) {
-  //   if (data !== null) {
-  //     if (currentUIDS.includes(data)) {
-  //       userIsConnected = true
-  //       currentUID = data
-  //     }
-  //   }
-  // })
+  // 发送消息
+  socket.on('changeContent', (data) => {
+    io.emit('changeContentReturn', data)
+  })
+
+  // 修改信息
+  socket.on('setInfo', (data) => {
+    let info = {}
+    user.forEach((i) => {
+      if (i.name == data.name) {
+        i.name = data.newName
+        i.introduce = data.introduce
+        i.ava = i.ava
+        info.ava = i.ava
+        info.name = data.newName
+        info.introduce = data.introduce
+      }
+    })
+    socket.emit('setInfoReturn', info)
+  })
 
   // 监听客户端断开
   socket.on('disconnect', () => {
@@ -128,57 +136,7 @@ io.on('connect', (socket) => {
       name: socket.name
     })
 
-    io.on('afterBody', () => {
-      console.log(user)
-      io.emit('afterBody', user)
-    })
-
-    // userIsConnected = false
-    // setTimeout(function () {
-    //   if (!userIsConnected) currentUIDS.pop(currentUID)
-    // }, 15000)
+    // 离开之后的数组
+    io.emit('afterBody', user)
   })
 })
-
-/*
-  中间件
-*/
-// io.use(function(socket, next){
-//   if (socket.request.headers.cookie) return next();
-//   next(new Error('Authentication error'));
-// });
-
-/*
-  广播
-  broadcast:向除了正在连接的socket以外的其他已经连接的socket发送事件
-  io.emit('pushMsg',"服务端返回的消息："+data)或者：
-  io.on('connection', function (socket) {
-    client++
-    socket.broadcast.emit('newClientConnect', client + ' clients connects')
-    socket.emit('newClientConnect', 'Hey, welcome')
-    socket.on('disconnect', function () {
-      client--
-    })
-  })
-*/
-/*
- *这段代码也是express结合socket的使用演示片段
- var app = require('express')();
- var http = require('http').Server(app);
- var io = require('socket.io')(http);
-
- app.get('/', function(req, res) {
-    res.sendFile(__dirname + '/index.html')
- })
-
- io.on('connection', function(socket) {
-   socket.emit('news', 'Hello world');
-   socket.on('my other event', function(data) {
-     console.log(data);
-   })
-})
-
- http.listen(8001, function() {
-   console.log('listen on 8001')
-})
-*/
