@@ -2,7 +2,6 @@
 const express = require('express')
 const app = express()
 const server = require('http').Server(app)
-// const cors = require('cors')
 const io = require('socket.io')(server, { cors: true })
 app.all('*', function (req, res, next) {
   res.header('Access-Control-Allow-Origin', '*')
@@ -13,7 +12,6 @@ app.all('*', function (req, res, next) {
   if (req.method.toLowerCase() == 'options') res.sendStatus(200)
   else next()
 })
-// app.use(cors)
 // 导入相关的包
 const jwt = require('jsonwebtoken')
 const expressJWT = require('express-jwt')
@@ -30,8 +28,10 @@ app.use(express.urlencoded())
 
 // 定义一个字符串作为密钥
 const secretKey = 'Helloworld'
+// 解析
 app.use(expressJWT({ secret: secretKey }).unless({ path: [/\/api\//] }))
 
+// 登录接口
 app.post('/chat/api/logins', (req, res) => {
   // if (req.body.name == 'admin' && req.body.password == '123456') {
   const tokenStr = jwt.sign({ name: req.body.name, password: req.body.password }, secretKey, {
@@ -46,6 +46,7 @@ app.post('/chat/api/logins', (req, res) => {
   // return res.send({ status: 400, msg: '换个账号密码' })
 })
 
+// 发送登录信息的接口
 app.get('/chat/getUser', (req, res) => {
   res.send({
     status: 200,
@@ -54,6 +55,7 @@ app.get('/chat/getUser', (req, res) => {
   })
 })
 
+// 中间件
 app.use((err, req, res, next) => {
   // token 解析失败
   if (err.name == 'UnauthorizedError') {
@@ -68,47 +70,58 @@ app.use((err, req, res, next) => {
   })
 })
 
+// 监听端口
 server.listen(3030, () => {
   console.log('listening on http://localhost:3030')
 })
 
 // io的书写
+// 保存在线人数
 const user = []
 io.on('connect', (socket) => {
   console.log('有人连接了')
+  // 收到用户登录的信息
   socket.on('login', function (data) {
     console.log('登录人的信息如下所示')
     console.log(data)
+    // 判断是否已经登录了
     let index = user.findIndex((i) => i.name === data.name)
+    // 已经登录
     if (index == 0) {
       socket.emit('loginErr', {
         status: 300,
         message: '该用户在线中'
       })
     } else if (index == -1) {
+      // 未登录
       user.push(data)
+      // 发送自身登录的信息
       socket.emit('loginSuccess', {
         status: 200,
         message: '登录成功',
         data
       })
     }
+    // 保存自身的信息，方便后续的传输
     socket.name = data.name
     socket.ava = data.ava
   })
 
   // 加入成员
   socket.on('myName', () => {
+    // 返回加入人的名称
     io.emit('myNameReturn', socket.name)
   })
 
   // 在线的所有人
   socket.on('allBody', () => {
+    // 返回在线的人的数组
     io.emit('allBodyReturn', user)
   })
 
   // 获取登录图片随机序号
   socket.on('getUserAva', () => {
+    // 发送自身的名称和头像随机数
     socket.emit('getUserAvaReturn', {
       ava: socket.ava,
       name: socket.name
@@ -117,30 +130,36 @@ io.on('connect', (socket) => {
 
   // 发送消息
   socket.on('changeContent', (data) => {
+    // 直接广播返回
     io.emit('changeContentReturn', data)
   })
 
   // 修改信息
   socket.on('setInfo', (data) => {
+    // 定义好新的对象
     let info = {}
     user.forEach((i) => {
       if (i.name == data.name) {
         i.name = data.newName
         i.introduce = data.introduce
         i.ava = i.ava
+        // 赋值
         info.ava = i.ava
         info.name = data.newName
         info.introduce = data.introduce
       }
     })
+    // 返回修改后的个人信息
     socket.emit('setInfoReturn', info)
   })
 
   // 监听客户端断开
   socket.on('disconnect', () => {
     console.log('有人断开了连接')
+    // 删除离开人的信息
     let index = user.findIndex((i) => i.name === socket.name)
     user.splice(index, 1)
+    // 发送离开人的名称
     io.emit('live', {
       name: socket.name
     })
