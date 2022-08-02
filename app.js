@@ -75,7 +75,7 @@ server.listen(3030, () => {
 // io的书写
 const user = []
 io.on('connect', (socket) => {
-  console.log('socket connected')
+  console.log('有人连接了')
   socket.on('login', function (data) {
     console.log('登录人的信息如下所示')
     console.log(data)
@@ -94,6 +94,7 @@ io.on('connect', (socket) => {
       })
     }
     socket.name = data.name
+    socket.ava = data.ava
   })
 
   // 加入成员
@@ -104,6 +105,14 @@ io.on('connect', (socket) => {
   // 在线的所有人
   socket.on('allBody', () => {
     io.emit('allBodyReturn', user)
+  })
+
+  // 获取登录图片随机序号
+  socket.on('getUserAva', () => {
+    socket.emit('getUserAvaReturn', {
+      ava: socket.ava,
+      name: socket.name
+    })
   })
 
   // 发送消息
